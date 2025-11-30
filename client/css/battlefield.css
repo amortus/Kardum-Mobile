@@ -1,0 +1,467 @@
+/* battlefield-mobile.css - Layout Mobile-First Otimizado */
+
+/* Container principal */
+#battlefield {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background: linear-gradient(180deg, #0a0014 0%, #1a0a1e 100%);
+}
+
+/* ==== OPPONENT AREA (Topo) ==== */
+.opponent-area {
+    flex-shrink: 0;
+    padding: 8px;
+    background: linear-gradient(180deg, rgba(231, 76, 60, 0.15) 0%, transparent 100%);
+    border-bottom: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+/* Player Info - Compacta no topo */
+.player-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    font-size: 0.75rem;
+}
+
+.general-portrait {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+}
+
+.health-bar {
+    width: 60px;
+    height: 16px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #27ae60, #2ecc71);
+    transition: width 0.3s ease;
+}
+
+.health-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: 700;
+    font-size: 0.65rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.resources-info {
+    display: flex;
+    gap: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.war-resources {
+    padding: 2px 8px;
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-weight: 700;
+}
+
+.resource-current {
+    font-size: 0.9rem;
+}
+
+.deck-info,
+.hand-info {
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* Opponent Hand - Compacta */
+.opponent-hand {
+    display: flex;
+    gap: 4px;
+    padding: 6px;
+    justify-content: center;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.opponent-hand::-webkit-scrollbar {
+    display: none;
+}
+
+.opponent-hand .card-back {
+    width: 50px !important;
+    height: 70px !important;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #34495e, #2c3e50);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.opponent-hand .card-back::before {
+    content: '🎴';
+}
+
+/* ==== BATTLE ZONE (Centro) ==== */
+.battle-zone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: linear-gradient(180deg, transparent, rgba(155, 89, 182, 0.05), transparent);
+}
+
+/* Turn Info - Compacta */
+.turn-info {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 8px;
+    margin: 6px auto;
+    font-size: 0.75rem;
+    backdrop-filter: blur(10px);
+}
+
+.turn-indicator {
+    color: #f39c12;
+    font-weight: 700;
+}
+
+.phase-indicator {
+    color: #9b59b6;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Field Areas */
+.field-area {
+    min-height: 80px;
+    max-height: 100px;
+    padding: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    align-items: center;
+    margin: 4px 8px;
+    scrollbar-width: thin;
+}
+
+.field-area::-webkit-scrollbar {
+    height: 3px;
+}
+
+.field-area::-webkit-scrollbar-thumb {
+    background: rgba(155, 89, 182, 0.5);
+    border-radius: 2px;
+}
+
+.field-area.drop-zone {
+    background: rgba(155, 89, 182, 0.2);
+    border-color: #9b59b6;
+    border-style: solid;
+}
+
+.field-area:empty::before {
+    content: 'Campo vazio';
+    color: rgba(255, 255, 255, 0.3);
+    font-size: 0.7rem;
+    font-style: italic;
+    margin: auto;
+}
+
+/* Cards in field - Smaller */
+.field-area .card {
+    width: 70px !important;
+    height: 98px !important;
+    flex-shrink: 0;
+}
+
+.field-area .card-frame {
+    transform: scale(0.7);
+    transform-origin: top left;
+}
+
+/* ==== PLAYER AREA (Bottom) ==== */
+.player-area-self {
+    flex-shrink: 0;
+    padding: 8px;
+    background: linear-gradient(180deg, transparent 0%, rgba(52, 152, 219, 0.15) 100%);
+    border-top: 1px solid rgba(52, 152, 219, 0.3);
+}
+
+/* Player Hand - Scrollable */
+.hand-area {
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    align-items: center;
+    scrollbar-width: thin;
+    max-height: 140px;
+}
+
+.hand-area::-webkit-scrollbar {
+    height: 4px;
+}
+
+.hand-area::-webkit-scrollbar-thumb {
+    background: rgba(52, 152, 219, 0.5);
+    border-radius: 2px;
+}
+
+.hand-area .card {
+    width: 85px !important;
+    min-width: 85px;
+    height: 120px !important;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.hand-area .card:active {
+    transform: translateY(-10px) scale(1.05);
+}
+
+.hand-area .card.disabled {
+    opacity: 0.5;
+    filter: grayscale(0.5);
+}
+
+/* ==== ACTION BUTTONS (Fixed Bottom) ==== */
+.action-buttons {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.8);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+}
+
+.action-btn {
+    flex: 1;
+    padding: 14px 16px;
+    font-family: var(--font-main);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: white;
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    max-width: 200px;
+}
+
+.action-btn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.action-btn.secondary {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+}
+
+.action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+/* ==== NOTIFICATIONS ==== */
+.notification {
+    position: fixed;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(155, 89, 182, 0.95);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    z-index: 10001;
+    font-weight: 600;
+    font-size: 0.85rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    max-width: 90%;
+    text-align: center;
+}
+
+/* ==== DESKTOP RESPONSIVE ==== */
+@media (min-width: 769px) {
+    #battlefield {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .player-info {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+
+    .general-portrait {
+        width: 50px;
+        height: 50px;
+        font-size: 1.8rem;
+    }
+
+    .health-bar {
+        width: 100px;
+        height: 20px;
+    }
+
+    .health-text {
+        font-size: 0.85rem;
+    }
+
+    .resources-info {
+        font-size: 0.9rem;
+    }
+
+    .war-resources {
+        padding: 4px 12px;
+    }
+
+    .opponent-hand .card-back {
+        width: 70px !important;
+        height: 100px !important;
+    }
+
+    .turn-info {
+        font-size: 1rem;
+        padding: 10px 20px;
+    }
+
+    .field-area {
+        min-height: 120px;
+        max-height: 150px;
+        padding: 10px;
+    }
+
+    .field-area .card {
+        width: 100px !important;
+        height: 140px !important;
+    }
+
+    .field-area .card-frame {
+        transform: scale(1);
+    }
+
+    .hand-area {
+        max-height: 180px;
+        padding: 10px;
+    }
+
+    .hand-area .card {
+        width: 110px !important;
+        min-width: 110px;
+        height: 155px !important;
+    }
+
+    .action-buttons {
+        position: relative;
+        bottom: auto;
+        left: auto;
+        right: auto;
+        justify-content: center;
+        background: transparent;
+        border: none;
+        padding: 16px;
+    }
+
+    .action-btn {
+        padding: 16px 32px;
+        font-size: 1rem;
+        max-width: 250px;
+    }
+
+    .notification {
+        font-size: 1rem;
+        padding: 12px 24px;
+    }
+}
+
+/* ==== VISUAL EFFECTS ==== */
+.card.can-attack {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+    }
+
+    50% {
+        box-shadow: 0 0 20px rgba(52, 152, 219, 0.8);
+    }
+}
+
+.card.selected {
+    border-color: #f39c12 !important;
+    box-shadow: 0 0 20px rgba(243, 156, 18, 0.8) !important;
+    transform: translateY(-5px);
+}
+
+/* Damage Numbers */
+.damage-number {
+    position: absolute;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #e74c3c;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px #e74c3c;
+    pointer-events: none;
+    z-index: 10000;
+    animation: floatUp 1s ease-out forwards;
+}
+
+@keyframes floatUp {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-60px) scale(1.5);
+        opacity: 0;
+    }
+}

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kardum Admin Dashboard</title>
+    <link rel="stylesheet" href="css/admin.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen">
+        <div class="login-container">
+            <h1>🎮 Kardum Admin</h1>
+            <form id="login-form">
+                <input type="text" id="username" placeholder="Usuário" required>
+                <input type="password" id="password" placeholder="Senha" required>
+                <button type="submit">Entrar</button>
+            </form>
+            <p class="error-message" id="login-error"></p>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="hidden">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Kardum Admin</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="overview">
+                    📊 Visão Geral
+                </a>
+                <a href="#" class="nav-item" data-page="cards">
+                    🎴 Gerenciar Cartas
+                </a>
+                <a href="#" class="nav-item" data-page="users">
+                    👥 Usuários
+                </a>
+                <a href="#" class="nav-item" data-page="stats">
+                    📈 Estatísticas
+                </a>
+                <a href="#" class="nav-item" data-page="logs">
+                    📝 Logs
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="btn-logout">Sair</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <!-- Overview Page -->
+            <div class="page active" id="page-overview">
+                <h1>Visão Geral</h1>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-users">0</div>
+                        <div class="stat-label">Usuários Totais</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-matches">0</div>
+                        <div class="stat-label">Partidas Jogadas</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-cards">0</div>
+                        <div class="stat-label">Cartas no Jogo</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="active-players">0</div>
+                        <div class="stat-label">Jogadores Ativos</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cards Management Page -->
+            <div class="page" id="page-cards">
+                <div class="page-header">
+                    <h1>Gerenciar Cartas</h1>
+                    <button class="btn-primary" id="btn-new-card">➕ Nova Carta</button>
+                </div>
+
+                <div class="search-bar">
+                    <input type="text" id="card-search" placeholder="Buscar cartas...">
+                    <select id="filter-type">
+                        <option value="">Todos os Tipos</option>
+                        <option value="general">General</option>
+                        <option value="defender">Defensor</option>
+                        <option value="equipment">Equipamento</option>
+                        <option value="mount">Montaria</option>
+                        <option value="consumable">Consumível</option>
+                        <option value="ability">Habilidade</option>
+                    </select>
+                    <select id="filter-race">
+                        <option value="">Todas as Raças</option>
+                        <option value="human">Humano</option>
+                        <option value="deva">Deva</option>
+                        <option value="orc">Orc</option>
+                        <option value="dwarf">Anão</option>
+                        <option value="elf">Elfo</option>
+                    </select>
+                </div>
+
+                <div class="cards-table">
+                    <table id="cards-list">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Tipo</th>
+                                <th>Raça</th>
+                                <th>Custo</th>
+                                <th>Ataque</th>
+                                <th>Defesa</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Cards will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Users Page -->
+            <div class="page" id="page-users">
+                <h1>Usuários</h1>
+                <div class="users-table">
+                    <table id="users-list">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>ELO Casual</th>
+                                <th>ELO Ranqueado</th>
+                                <th>Partidas</th>
+                                <th>Vitórias</th>
+                                <th>Cadastro</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Users will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Stats Page -->
+            <div class="page" id="page-stats">
+                <h1>Estatísticas</h1>
+                <p>Gráficos e estatísticas detalhadas serão implementados aqui.</p>
+            </div>
+
+            <!-- Logs Page -->
+            <div class="page" id="page-logs">
+                <h1>Logs do Sistema</h1>
+                <div class="logs-container">
+                    <div class="log-entry">Sistema inicializado</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Card Form Modal -->
+    <div id="card-form-modal" class="modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <h2 id="modal-title">Nova Carta</h2>
+            <form id="card-form">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>ID da Carta</label>
+                        <input type="text" name="id" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select name="type" required>
+                            <option value="general">General</option>
+                            <option value="defender">Defensor</option>
+                            <option value="equipment">Equipamento</option>
+                            <option value="mount">Montaria</option>
+                            <option value="consumable">Consumível</option>
+                            <option value="ability">Habilidade</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Raça</label>
+                        <select name="race">
+                            <option value="">Nenhuma</option>
+                            <option value="human">Humano</option>
+                            <option value="deva">Deva</option>
+                            <option value="orc">Orc</option>
+                            <option value="dwarf">Anão</option>
+                            <option value="elf">Elfo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Classe</label>
+                        <select name="class">
+                            <option value="">Nenhuma</option>
+                            <option value="warrior">Warrior</option>
+                            <option value="barbarian">Barbarian</option>
+                            <option value="druid">Druid</option>
+                            <option value="elementalist">Elementalist</option>
+                            <option value="necromancer">Necromancer</option>
+                            <option value="archer">Archer</option>
+                            <option value="assassin">Assassin</option>
+                            <option value="chivalry">Chivalry</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Custo</label>
+                        <input type="number" name="cost" min="0" max="10" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ataque</label>
+                        <input type="number" name="attack" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Defesa</label>
+                        <input type="number" name="defense" min="0">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Texto</label>
+                        <textarea name="text" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Raridade</label>
+                        <select name="rarity">
+                            <option value="common">Comum</option>
+                            <option value="rare">Rara</option>
+                            <option value="epic">Épica</option>
+                            <option value="legendary">Lendária</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="button" class="btn-secondary" id="btn-cancel-card">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

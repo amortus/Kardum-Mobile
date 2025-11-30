@@ -1,0 +1,26 @@
+{
+  "name": "kardum-tcg",
+  "version": "1.0.0",
+  "description": "Kardum - Jogo de Cartas Tático para Web e Mobile",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "serve-client": "npx -y http-server client -p 8080 -o",
+    "serve-admin": "npx -y http-server admin -p 8081 -o"
+  },
+  "keywords": ["card-game", "tcg", "mobile", "pwa"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "better-sqlite3": "^9.2.2",
+    "dotenv": "^16.3.1",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {}
+}
