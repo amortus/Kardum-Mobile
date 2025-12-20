@@ -4,6 +4,9 @@ import { CombatSystem } from './core/combat-system.js';
 import { AIOpponent } from './ai/ai-opponent.js';
 import { DeckBuilder } from './ui/deck-builder.js';
 import * as CardsDB from './data/cards-database.js';
+import authManager from './auth/auth-manager.js';
+import socketClient from './network/socket-client.js';
+import PvpManager from './pvp/pvp-manager.js';
 
 class KardumGame {
     constructor() {
@@ -11,6 +14,7 @@ class KardumGame {
         this.combatSystem = null;
         this.aiOpponent = null;
         this.deckBuilder = null;
+        this.pvpManager = null;
         this.currentMode = 'menu';
         this.selectedCard = null;
         this.attackingCard = null;
@@ -21,6 +25,7 @@ class KardumGame {
 
     async init() {
         window.cardsDB = CardsDB;
+        window.authManager = authManager;
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.setupUI());
@@ -30,12 +35,37 @@ class KardumGame {
 
         setTimeout(() => {
             this.hideScreen('loading-screen');
-            this.showScreen('main-menu');
+            this.checkAuth();
         }, 1500);
+    }
+
+    checkAuth() {
+        // Verificar se está autenticado
+        if (authManager.isAuthenticated()) {
+            // Verificar se token ainda é válido
+            authManager.refreshUser().then(result => {
+                if (result.success) {
+                    this.showScreen('main-menu');
+                } else {
+                    // Token inválido, mostrar login
+                    this.showScreen('auth-screen');
+                }
+            });
+        } else {
+            // Não autenticado, mostrar login
+            this.showScreen('auth-screen');
+        }
     }
 
     setupUI() {
         this.deckBuilder = new DeckBuilder(this);
+        this.pvpManager = new PvpManager(this);
+        this.setupAuthUI();
+        
+        // Conectar socket após autenticação
+        if (authManager.isAuthenticated()) {
+            socketClient.connect();
+        }
 
         document.getElementById('btn-single-player')?.addEventListener('click', () => {
             this.showScreen('difficulty-screen');
@@ -43,6 +73,14 @@ class KardumGame {
 
         document.getElementById('btn-deck-builder')?.addEventListener('click', () => {
             this.deckBuilder.showGeneralSelection();
+        });
+
+        document.getElementById('btn-multiplayer-casual')?.addEventListener('click', () => {
+            this.startPvpMatchmaking('casual');
+        });
+
+        document.getElementById('btn-multiplayer-ranked')?.addEventListener('click', () => {
+            this.startPvpMatchmaking('ranked');
         });
 
         document.querySelectorAll('[data-difficulty]').forEach(btn => {
@@ -58,6 +96,12 @@ class KardumGame {
 
         document.getElementById('btn-end-turn')?.addEventListener('click', () => {
             if (this.gameState) {
+                // Se for PvP, enviar ação de passar turno
+                if (this.currentMode === 'pvp' && this.pvpManager && this.pvpManager.currentMatch) {
+                    this.pvpManager.sendPlayerAction({
+                        type: 'endTurn'
+                    });
+                }
                 this.gameState.nextPhase();
             }
         });
@@ -88,8 +132,114 @@ class KardumGame {
         });
     }
 
-    startSinglePlayer(difficulty) {
-        const savedDecks = JSON.parse(localStorage.getItem('kardum_decks') || '[]');
+    setupAuthUI() {
+        // Switch entre login e register
+        document.getElementById('switch-to-register')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('login-form').classList.remove('active');
+            document.getElementById('register-form').classList.add('active');
+            this.clearAuthErrors();
+        });
+
+        document.getElementById('switch-to-login')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('register-form').classList.remove('active');
+            document.getElementById('login-form').classList.add('active');
+            this.clearAuthErrors();
+        });
+
+        // Login form
+        document.getElementById('login-form-element')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+
+            this.clearAuthErrors();
+            const result = await authManager.login(username, password);
+
+            if (result.success) {
+                this.showScreen('main-menu');
+                // Conectar socket após login
+                socketClient.connect();
+            } else {
+                this.showAuthError('login-error', result.error);
+            }
+        });
+
+        // Register form
+        document.getElementById('register-form-element')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('register-username').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const passwordConfirm = document.getElementById('register-password-confirm').value;
+
+            this.clearAuthErrors();
+
+            // Validação
+            if (password !== passwordConfirm) {
+                this.showAuthError('register-error', 'As senhas não coincidem');
+                return;
+            }
+
+            const result = await authManager.register(username, email, password);
+
+            if (result.success) {
+                this.showScreen('main-menu');
+                // Conectar socket após registro
+                socketClient.connect();
+            } else {
+                this.showAuthError('register-error', result.error);
+            }
+        });
+    }
+
+    /**
+     * Iniciar matchmaking PvP
+     */
+    async startPvpMatchmaking(matchType) {
+        // Carregar decks do usuário
+        const decks = await this.deckBuilder.loadUserDecks();
+
+        if (decks.length === 0) {
+            this.showConfirm(
+                'Deck Necessário',
+                'Você precisa criar um deck para jogar PvP! Deseja ir para a Coleção agora?',
+                () => {
+                    this.showScreen('main-menu');
+                    this.deckBuilder.showGeneralSelection();
+                }
+            );
+            return;
+        }
+
+        // Se tiver apenas um deck, usar ele. Senão, mostrar seleção
+        if (decks.length === 1) {
+            this.pvpManager.joinQueue(decks[0].id, matchType);
+        } else {
+            // Mostrar seleção de deck
+            this.showDeckSelection(decks, (deck) => {
+                this.pvpManager.joinQueue(deck.id, matchType);
+            });
+        }
+    }
+
+    showAuthError(errorId, message) {
+        const errorEl = document.getElementById(errorId);
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+        }
+    }
+
+    clearAuthErrors() {
+        document.getElementById('login-error')?.classList.add('hidden');
+        document.getElementById('register-error')?.classList.add('hidden');
+    }
+
+    async startSinglePlayer(difficulty) {
+        // Carregar decks do servidor
+        const savedDecks = await this.deckBuilder.loadUserDecks();
 
         if (savedDecks.length === 0) {
             this.showConfirm(
@@ -107,19 +257,37 @@ class KardumGame {
         this.showDeckSelection(savedDecks);
     }
 
-    showDeckSelection(decks) {
+    showDeckSelection(decks, onSelect = null) {
         const modal = document.getElementById('deck-selection-modal');
         const list = document.getElementById('deck-selection-list');
         list.innerHTML = '';
 
+        if (decks.length === 0) {
+            list.innerHTML = '<p style="color: #aaa; text-align: center; padding: 20px;">Nenhum deck encontrado</p>';
+            modal.classList.remove('hidden');
+            return;
+        }
+
         decks.forEach(deck => {
             const item = document.createElement('div');
             item.className = 'deck-selection-item';
+            const generalId = deck.generalId || (Array.isArray(deck.cards) ? deck.cards[0] : null);
+            const general = generalId ? CardsDB.getCardById(generalId) : null;
+            const cards = Array.isArray(deck.cards) ? deck.cards : JSON.parse(deck.cards || '[]');
+            
             item.innerHTML = `
                 <div class="deck-name">${deck.name}</div>
-                <div class="deck-info">General: ${CardsDB.getCardById(deck.generalId)?.name || 'Desconhecido'}</div>
+                <div class="deck-info">General: ${general?.name || 'Desconhecido'}</div>
+                <div class="deck-info">Cartas: ${cards.length}</div>
             `;
-            item.onclick = () => this.startGameWithDeck(deck);
+            item.onclick = () => {
+                modal.classList.add('hidden');
+                if (onSelect) {
+                    onSelect(deck);
+                } else {
+                    this.startGameWithDeck(deck);
+                }
+            };
             list.appendChild(item);
         });
 
@@ -139,7 +307,17 @@ class KardumGame {
 
         this.setupGameListeners();
 
-        const fullPlayerDeck = [playerDeckData.generalId, ...playerDeckData.cards];
+        // Extrair general e cartas do deck
+        let generalId = playerDeckData.generalId;
+        let cards = Array.isArray(playerDeckData.cards) ? playerDeckData.cards : JSON.parse(playerDeckData.cards || '[]');
+        
+        // Se não tem generalId separado, assumir que o primeiro é o general
+        if (!generalId && cards.length > 0) {
+            generalId = cards[0];
+            cards = cards.slice(1);
+        }
+
+        const fullPlayerDeck = [generalId, ...cards];
         const aiDeck = CardsDB.createStarterDeck('gen_ivin');
 
         this.gameState.startGame(fullPlayerDeck, aiDeck);
@@ -187,6 +365,10 @@ class KardumGame {
                     break;
 
                 case 'gameEnded':
+                    // Se for PvP, finalizar partida no servidor
+                    if (this.currentMode === 'pvp' && this.pvpManager && this.pvpManager.currentMatch) {
+                        this.pvpManager.endMatch(data.winner);
+                    }
                     this.showGameOver(data.winner);
                     break;
 
@@ -532,6 +714,15 @@ class KardumGame {
         const result = this.combatSystem.declareAttack(attacker.instanceId, targetId);
 
         if (result.success) {
+            // Se for PvP, enviar ação para o servidor
+            if (this.currentMode === 'pvp' && this.pvpManager && this.pvpManager.currentMatch) {
+                this.pvpManager.sendPlayerAction({
+                    type: 'attack',
+                    attackerId: attacker.instanceId,
+                    targetId: targetId
+                });
+            }
+
             this.attackingCard = null;
             this.renderBattlefield();
         } else {
@@ -590,8 +781,8 @@ class KardumGame {
 
     showConfirm(title, message, onYes, onNo = null, yesText = 'Sim', noText = 'Não') {
         const modal = document.getElementById('confirm-modal');
-        document.getElementById('confirm-modal-title').textContent = title;
-        document.getElementById('confirm-modal-message').textContent = message;
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-message').textContent = message;
 
         const yesBtn = document.getElementById('confirm-btn-yes');
         const noBtn = document.getElementById('confirm-btn-no');

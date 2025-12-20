@@ -18,7 +18,7 @@
     <!-- Styles -->
     <link rel="stylesheet" href="css/main.css?v=11">
     <link rel="stylesheet" href="css/cards.css?v=11">
-    <link rel="stylesheet" href="css/battlefield.css?v=11">
+    <link rel="stylesheet" href="css/battlefield.css?v=12">
     <link rel="stylesheet" href="css/combat-indicators.css?v=1">
     <link rel="stylesheet" href="css/deck-builder.css?v=11">
     <link rel="stylesheet" href="css/deck-pane-collapsible.css?v=1">
@@ -27,6 +27,7 @@
     <link rel="stylesheet" href="css/card-modal.css?v=1">
     <link rel="stylesheet" href="css/confirm-modal.css?v=1">
     <link rel="stylesheet" href="css/mobile.css?v=11">
+    <link rel="stylesheet" href="css/auth.css?v=1">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,6 +44,64 @@
             <img src="assets/images/RAW/Logo.png" class="game-logo" alt="KARDUM">
             <div class="loading-spinner"></div>
             <p style="font-family: 'Cinzel', serif; color: #D4AF37; margin-top: 20px;">Carregando...</p>
+        </div>
+    </div>
+
+    <!-- Auth Screen (Login/Register) -->
+    <div id="auth-screen" class="screen">
+        <div class="auth-container">
+            <img src="assets/images/RAW/Logo.png" class="game-logo" alt="KARDUM">
+            <p class="game-subtitle">Tales of Shadowland</p>
+
+            <!-- Login Form -->
+            <div id="login-form" class="auth-form active">
+                <h2 style="font-family: 'Cinzel', serif; color: #D4AF37; margin-bottom: 20px;">Entrar</h2>
+                <div id="auth-error" class="auth-error hidden"></div>
+                <form id="login-form-element">
+                    <div class="form-group">
+                        <label for="login-username">Username</label>
+                        <input type="text" id="login-username" name="username" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Senha</label>
+                        <input type="password" id="login-password" name="password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn-primary" id="btn-login-submit">Entrar</button>
+                </form>
+                <p class="auth-switch">
+                    Não tem conta? <a href="#" id="switch-to-register">Criar conta</a>
+                </p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="register-form" class="auth-form">
+                <h2 style="font-family: 'Cinzel', serif; color: #D4AF37; margin-bottom: 20px;">Criar Conta</h2>
+                <div id="register-error" class="auth-error hidden"></div>
+                <form id="register-form-element">
+                    <div class="form-group">
+                        <label for="register-username">Username</label>
+                        <input type="text" id="register-username" name="username" required autocomplete="username" minlength="3" maxlength="20">
+                        <small>3-20 caracteres</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-email">Email (opcional)</label>
+                        <input type="email" id="register-email" name="email" autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password">Senha</label>
+                        <input type="password" id="register-password" name="password" required autocomplete="new-password" minlength="6">
+                        <small>Mínimo 6 caracteres</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-password-confirm">Confirmar Senha</label>
+                        <input type="password" id="register-password-confirm" name="passwordConfirm" required autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn-primary" id="btn-register-submit">Criar Conta</button>
+                </form>
+                <p class="auth-switch">
+                    Já tem conta? <a href="#" id="switch-to-login">Fazer login</a>
+                </p>
+            </div>
         </div>
     </div>
 
@@ -240,12 +299,12 @@
 
         <!-- Player Area -->
         <div class="player-area player-area-self">
-            <div class="hand-area" id="player-hand">
-                <!-- Mão do jogador -->
+            <div class="field-area" id="player-field">
+                <!-- Cartas do jogador -->
             </div>
 
-            <div class="field-area" id="player-field">
-                <!-- Cartas do jogador aparecerão aqui -->
+            <div class="hand-area" id="player-hand">
+                <!-- Mão do jogador -->
             </div>
 
             <div class="player-info">
@@ -261,7 +320,7 @@
 
                 <div class="resources-info">
                     <div class="war-resources" id="player-resources">
-                        <span class="resource-current">0</span> / <span class="resource-max">0</span>
+                        <span class="resource-current">1</span> / <span class="resource-max">1</span>
                     </div>
                     <div class="deck-info">
                         <span id="player-deck-count">30</span> 📚
@@ -276,52 +335,47 @@
         <!-- Action Buttons -->
         <div class="action-buttons">
             <button class="action-btn" id="btn-end-turn">Passar Turno</button>
-            <button class="action-btn secondary" id="btn-menu">Menu</button>
+            <button class="action-btn secondary" id="btn-menu-ingame">Menu</button>
         </div>
     </div>
 
     <!-- Game Over Screen -->
     <div id="game-over" class="screen hidden">
-        <div class="game-over-container">
-            <h1 id="game-over-title">VITÓRIA!</h1>
-            <p id="game-over-message">Você derrotou o oponente!</p>
-
-            <div class="menu-buttons">
-                <button class="menu-btn primary" id="btn-play-again">Jogar Novamente</button>
-                <button class="menu-btn secondary" id="btn-main-menu">Menu Principal</button>
-            </div>
+        <div class="game-over-content">
+            <h2 id="game-over-title">Vitória!</h2>
+            <p id="game-over-message">Você derrotou o oponente.</p>
+            <button class="menu-btn primary" id="btn-return-menu">Voltar ao Menu</button>
         </div>
     </div>
 
     <!-- Deck Selection Modal -->
     <div id="deck-selection-modal" class="modal hidden">
         <div class="modal-content">
-            <h2>Escolha seu Deck</h2>
-            <div id="deck-selection-list" class="deck-list-modal">
-                <!-- Decks serão listados aqui -->
+            <h2>Selecione seu Deck</h2>
+            <div id="deck-selection-list">
+                <!-- Decks listados aqui -->
             </div>
-            <button id="btn-cancel-deck-selection" class="btn-secondary">Cancelar</button>
+            <button class="btn-secondary" id="btn-cancel-deck-selection">Cancelar</button>
         </div>
     </div>
 
     <!-- Card Detail Modal -->
     <div id="card-detail-modal" class="modal hidden">
-        <div class="modal-backdrop"></div>
-        <div class="modal-content">
-            <button class="modal-close" id="btn-close-modal">✕</button>
+        <div class="modal-content card-detail-content">
+            <span class="close-modal">&times;</span>
             <div id="card-detail-view"></div>
         </div>
     </div>
 
     <!-- Card Modal for Deck Builder -->
     <div id="card-modal" class="modal">
-        <div class="modal-content card-modal-content">
-            <button class="modal-close" id="card-modal-close">✕</button>
-            <div class="card-modal-body">
-                <div id="card-modal-card-container" class="card-modal-card"></div>
-                <div id="card-modal-info" class="card-modal-info"></div>
+        <div class="modal-content">
+            <span class="close-button" id="card-modal-close">&times;</span>
+            <div class="modal-body" style="display: flex; gap: 20px; align-items: flex-start;">
+                <div id="card-modal-card-container"></div>
+                <div id="card-modal-info" style="flex: 1; color: #fff;"></div>
             </div>
-            <div class="card-modal-actions">
+            <div class="modal-actions">
                 <button id="card-modal-add" class="btn-primary">Adicionar ao Deck</button>
             </div>
         </div>
@@ -332,11 +386,10 @@
 
     <!-- Confirm Modal -->
     <div id="confirm-modal" class="confirm-modal" style="display: none;">
-        <div class="confirm-backdrop"></div>
         <div class="confirm-content">
-            <h3 id="confirm-modal-title">Confirmar</h3>
-            <p id="confirm-modal-message">Tem certeza?</p>
-            <div class="confirm-buttons">
+            <h3 id="confirm-title">Confirmar</h3>
+            <p id="confirm-message">Tem certeza?</p>
+            <div class="confirm-actions">
                 <button id="confirm-btn-yes" class="btn-primary">Sim</button>
                 <button id="confirm-btn-no" class="btn-secondary">Não</button>
             </div>

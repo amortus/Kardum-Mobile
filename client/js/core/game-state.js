@@ -223,7 +223,7 @@ export class GameState {
     // Verificar se criatura pode atacar
     canAttack(creature) {
         if (creature.hasAttacked) return false;
-        if (creature.isSummoned && !creature.keywords?.includes('rush')) return false;
+        if (creature.isSummoned && !creature.hasAbilities?.includes('rush')) return false;
         return true;
     }
 
@@ -231,7 +231,7 @@ export class GameState {
     selectCombatTarget(defender) {
         // Prioridade 1: Criaturas com Taunt
         const tauntCreatures = defender.field.filter(c =>
-            c.keywords?.includes('taunt')
+            c.hasAbilities?.includes('taunt')
         );
         if (tauntCreatures.length > 0) {
             return tauntCreatures[0];

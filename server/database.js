@@ -55,6 +55,7 @@ function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       name TEXT NOT NULL,
+      general_id TEXT NOT NULL,
       cards TEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -153,6 +154,71 @@ module.exports = {
     },
     deleteCard: (id) => {
         return db.prepare('UPDATE cards SET is_active = 0 WHERE id = ?').run(id);
+    },
+
+    // Deck functions
+    getUserDecks: (userId) => {
+        const decks = db.prepare('SELECT * FROM decks WHERE user_id = ? ORDER BY updated_at DESC').all(userId);
+        return decks.map(deck => {
+            let cards = [];
+            try {
+                cards = JSON.parse(deck.cards);
+            } catch (e) {
+                cards = [];
+            }
+            return {
+                id: deck.id,
+                user_id: deck.user_id,
+                name: deck.name,
+                generalId: deck.general_id || null,
+                cards: cards,
+                created_at: deck.created_at,
+                updated_at: deck.updated_at
+            };
+        });
+    },
+    getDeckById: (deckId) => {
+        const deck = db.prepare('SELECT * FROM decks WHERE id = ?').get(deckId);
+        if (!deck) return null;
+        let cards = [];
+        try {
+            cards = JSON.parse(deck.cards);
+        } catch (e) {
+            cards = [];
+        }
+        return {
+            id: deck.id,
+            user_id: deck.user_id,
+            name: deck.name,
+            general_id: deck.general_id || null,
+            cards: deck.cards, // Mantém como string para compatibilidade
+            created_at: deck.created_at,
+            updated_at: deck.updated_at
+        };
+    },
+    createDeck: (userId, deckData) => {
+        return db.prepare('INSERT INTO decks (user_id, name, general_id, cards) VALUES (?, ?, ?, ?)').run(
+            userId,
+            deckData.name,
+            deckData.generalId,
+            JSON.stringify(Array.isArray(deckData.cards) ? deckData.cards : [])
+        );
+    },
+    updateDeck: (deckId, userId, deckData) => {
+        return db.prepare(`
+            UPDATE decks 
+            SET name = ?, general_id = ?, cards = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ?
+        `).run(
+            deckData.name,
+            deckData.generalId,
+            JSON.stringify(Array.isArray(deckData.cards) ? deckData.cards : JSON.parse(deckData.cards || '[]')),
+            deckId,
+            userId
+        );
+    },
+    deleteDeck: (deckId, userId) => {
+        return db.prepare('DELETE FROM decks WHERE id = ? AND user_id = ?').run(deckId, userId);
     },
 
     // Match functions

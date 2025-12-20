@@ -1,6 +1,7 @@
 // deck-builder.js - Lógica do construtor de decks
 import * as CardsDB from '../data/cards-database.js';
 import { uiManager } from './ui-manager.js';
+import apiClient from '../network/api-client.js';
 
 export class DeckBuilder {
     constructor(gameInstance) {
@@ -345,26 +346,49 @@ export class DeckBuilder {
         }
     }
 
-    saveDeck() {
+    async saveDeck() {
         const count = this.currentDeck.cards.length;
         if (count < 30) {
             uiManager.showToast(`Deck incompleto! Mínimo 30 cartas (Atual: ${count})`, 'error');
             return;
         }
 
-        const deckData = {
-            id: `deck_${Date.now()}`,
-            name: this.currentDeck.name,
-            generalId: this.currentDeck.general.id,
-            cards: this.currentDeck.cards,
-            createdAt: new Date().toISOString()
-        };
+        if (!this.currentDeck.general) {
+            uiManager.showToast('Selecione um General primeiro!', 'error');
+            return;
+        }
 
-        const savedDecks = JSON.parse(localStorage.getItem('kardum_decks') || '[]');
-        savedDecks.push(deckData);
-        localStorage.setItem('kardum_decks', JSON.stringify(savedDecks));
+        try {
+            const deckData = {
+                name: this.currentDeck.name,
+                generalId: this.currentDeck.general.id,
+                cards: this.currentDeck.cards
+            };
 
-        uiManager.showToast('Deck salvo com sucesso!', 'success', 2000);
-        setTimeout(() => this.game.showScreen('main-menu'), 2200);
+            const result = await apiClient.post('/api/decks', deckData);
+
+            if (result.success) {
+                uiManager.showToast('Deck salvo com sucesso!', 'success', 2000);
+                setTimeout(() => this.game.showScreen('main-menu'), 2200);
+            } else {
+                uiManager.showToast(result.error || 'Erro ao salvar deck', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving deck:', error);
+            uiManager.showToast(error.message || 'Erro ao salvar deck', 'error');
+        }
+    }
+
+    async loadUserDecks() {
+        try {
+            const result = await apiClient.get('/api/decks');
+            if (result.success) {
+                return result.data;
+            }
+            return [];
+        } catch (error) {
+            console.error('Error loading decks:', error);
+            return [];
+        }
     }
 }
