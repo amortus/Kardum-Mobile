@@ -146,24 +146,25 @@ function convertParams(params) {
 
 // Create tables
 async function initDatabase() {
-    if (usePostgres) {
-        // PostgreSQL schema
-        await dbHelpers.exec(`
-            CREATE TABLE IF NOT EXISTS users (
-                id SERIAL PRIMARY KEY,
-                username VARCHAR(255) UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                email VARCHAR(255) UNIQUE,
-                elo_casual INTEGER DEFAULT 1000,
-                elo_ranked INTEGER DEFAULT 1000,
-                total_matches INTEGER DEFAULT 0,
-                wins INTEGER DEFAULT 0,
-                losses INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_login TIMESTAMP,
-                is_admin INTEGER DEFAULT 0
-            )
-        `);
+    try {
+        if (usePostgres) {
+            // PostgreSQL schema
+            await dbHelpers.exec(`
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username VARCHAR(255) UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    email VARCHAR(255) UNIQUE,
+                    elo_casual INTEGER DEFAULT 1000,
+                    elo_ranked INTEGER DEFAULT 1000,
+                    total_matches INTEGER DEFAULT 0,
+                    wins INTEGER DEFAULT 0,
+                    losses INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_login TIMESTAMP,
+                    is_admin INTEGER DEFAULT 0
+                )
+            `);
 
         await dbHelpers.exec(`
             CREATE TABLE IF NOT EXISTS cards (
@@ -327,14 +328,20 @@ async function seedDatabase() {
     }
 }
 
-// Initialize and seed (async)
+// Initialize and seed (async) - não bloquear servidor
+let dbInitialized = false;
 (async () => {
     try {
+        console.log('🔄 Initializing database...');
         await initDatabase();
         await seedDatabase();
+        dbInitialized = true;
+        console.log('✅ Database ready');
     } catch (error) {
         console.error('❌ Database initialization error:', error);
-        process.exit(1);
+        // Não matar o processo, apenas logar o erro
+        // O servidor pode continuar e tentar novamente nas próximas requisições
+        dbInitialized = false;
     }
 })();
 
@@ -407,47 +414,82 @@ module.exports = {
 
     // Deck functions
     getUserDecks: async (userId) => {
-        const decks = await dbHelpers.queryAll(
-            'SELECT * FROM decks WHERE user_id = ? ORDER BY updated_at DESC',
-            [userId]
-        );
-        return decks.map(deck => {
+        try {
+            // Aguardar inicialização do banco se necessário
+            if (!dbInitialized) {
+                let waitCount = 0;
+                while (!dbInitialized && waitCount < 50) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    waitCount++;
+                }
+            }
+
+            const decks = await dbHelpers.queryAll(
+                'SELECT * FROM decks WHERE user_id = ? ORDER BY updated_at DESC',
+                [userId]
+            );
+            
+            return decks.map(deck => {
+                let cards = [];
+                try {
+                    // Se cards já é array, usar diretamente
+                    if (Array.isArray(deck.cards)) {
+                        cards = deck.cards;
+                    } else if (typeof deck.cards === 'string') {
+                        cards = JSON.parse(deck.cards || '[]');
+                    }
+                } catch (e) {
+                    console.error('Error parsing deck cards:', e, deck);
+                    cards = [];
+                }
+                return {
+                    id: deck.id,
+                    user_id: deck.user_id,
+                    name: deck.name,
+                    generalId: deck.general_id || null,
+                    cards: cards,
+                    created_at: deck.created_at,
+                    updated_at: deck.updated_at
+                };
+            });
+        } catch (error) {
+            console.error('Error getting user decks:', error);
+            return [];
+        }
+    },
+    
+    getDeckById: async (deckId) => {
+        try {
+            const deck = await dbHelpers.query('SELECT * FROM decks WHERE id = ?', [deckId]);
+            if (!deck) return null;
+            
             let cards = [];
             try {
-                cards = JSON.parse(deck.cards);
+                // Se cards já é array, usar diretamente
+                if (Array.isArray(deck.cards)) {
+                    cards = deck.cards;
+                } else if (typeof deck.cards === 'string') {
+                    cards = JSON.parse(deck.cards || '[]');
+                }
             } catch (e) {
+                console.error('Error parsing deck cards:', e, deck);
                 cards = [];
             }
+            
             return {
                 id: deck.id,
                 user_id: deck.user_id,
                 name: deck.name,
                 generalId: deck.general_id || null,
-                cards: cards,
+                general_id: deck.general_id || null, // Compatibilidade
+                cards: cards, // Retorna como array
                 created_at: deck.created_at,
                 updated_at: deck.updated_at
             };
-        });
-    },
-    
-    getDeckById: async (deckId) => {
-        const deck = await dbHelpers.query('SELECT * FROM decks WHERE id = ?', [deckId]);
-        if (!deck) return null;
-        let cards = [];
-        try {
-            cards = JSON.parse(deck.cards);
-        } catch (e) {
-            cards = [];
+        } catch (error) {
+            console.error('Error getting deck:', error);
+            return null;
         }
-        return {
-            id: deck.id,
-            user_id: deck.user_id,
-            name: deck.name,
-            general_id: deck.general_id || null,
-            cards: deck.cards, // Mantém como string para compatibilidade
-            created_at: deck.created_at,
-            updated_at: deck.updated_at
-        };
     },
     
     createDeck: async (userId, deckData) => {

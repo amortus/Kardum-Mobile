@@ -366,19 +366,31 @@ class KardumGame {
             return;
         }
 
-        // Validar que todas as cartas existem no database
-        const invalidCards = [];
-        cards.forEach(cardId => {
-            const card = window.cardsDB.getCardById(cardId);
+        // Validar que todas as cartas existem no database (otimizado)
+        const validCards = [];
+        const cardCache = new Map(); // Cache para evitar múltiplas buscas
+        
+        for (const cardId of cards) {
+            let card = cardCache.get(cardId);
             if (!card) {
-                invalidCards.push(cardId);
+                card = window.cardsDB.getCardById(cardId);
+                if (card) {
+                    cardCache.set(cardId, card);
+                    validCards.push(cardId);
+                } else {
+                    console.warn(`Carta inválida encontrada: ${cardId}`);
+                }
+            } else {
+                validCards.push(cardId);
             }
-        });
-
-        if (invalidCards.length > 0) {
-            console.warn('Cartas inválidas encontradas:', invalidCards);
-            // Filtrar cartas inválidas
-            cards = cards.filter(cardId => window.cardsDB.getCardById(cardId) !== undefined);
+        }
+        
+        cards = validCards;
+        
+        if (cards.length === 0) {
+            console.error('Nenhuma carta válida no deck!');
+            this.showNotification('Erro: Deck não possui cartas válidas');
+            return;
         }
 
         const fullPlayerDeck = [generalId, ...cards];

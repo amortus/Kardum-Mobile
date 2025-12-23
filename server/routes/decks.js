@@ -15,7 +15,13 @@ router.use(authenticateToken);
 router.get('/', async (req, res) => {
     try {
         const userId = req.user.id;
+        console.log(`[Decks] Loading decks for user ${userId}`);
+        const startTime = Date.now();
+        
         const decks = await getUserDecks(userId);
+        
+        const loadTime = Date.now() - startTime;
+        console.log(`[Decks] Loaded ${decks.length} decks in ${loadTime}ms`);
 
         res.json({
             success: true,

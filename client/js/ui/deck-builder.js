@@ -4,6 +4,11 @@ import { uiManager } from './ui-manager.js';
 import apiClient from '../network/api-client.js';
 
 export class DeckBuilder {
+    constructor() {
+        this.deckCache = null; // Cache de decks
+        this.cacheTimestamp = 0;
+        this.CACHE_DURATION = 30000; // 30 segundos
+    }
     constructor(gameInstance) {
         this.game = gameInstance;
         this.currentDeck = {
@@ -368,6 +373,7 @@ export class DeckBuilder {
             const result = await apiClient.post('/api/decks', deckData);
 
             if (result.success) {
+                this.clearDeckCache(); // Limpar cache após salvar
                 uiManager.showToast('Deck salvo com sucesso!', 'success', 2000);
                 setTimeout(() => this.game.showScreen('main-menu'), 2200);
             } else {
@@ -379,16 +385,45 @@ export class DeckBuilder {
         }
     }
 
-    async loadUserDecks() {
+    async loadUserDecks(forceRefresh = false) {
         try {
-            const result = await apiClient.get('/api/decks');
-            if (result.success) {
+            // Verificar cache
+            const now = Date.now();
+            if (!forceRefresh && this.deckCache && (now - this.cacheTimestamp) < this.CACHE_DURATION) {
+                console.log('📦 Usando cache de decks');
+                return this.deckCache;
+            }
+
+            // Timeout de 10 segundos para evitar travamentos
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout ao carregar decks')), 10000)
+            );
+            
+            const fetchPromise = apiClient.get('/api/decks');
+            const result = await Promise.race([fetchPromise, timeoutPromise]);
+            
+            if (result && result.success) {
+                console.log(`✅ Carregados ${result.data.length} decks`);
+                // Atualizar cache
+                this.deckCache = result.data;
+                this.cacheTimestamp = now;
                 return result.data;
             }
             return [];
         } catch (error) {
-            console.error('Error loading decks:', error);
+            console.error('❌ Error loading decks:', error);
+            // Se houver cache, usar ele mesmo com erro
+            if (this.deckCache) {
+                console.log('⚠️ Usando cache antigo devido a erro');
+                return this.deckCache;
+            }
+            this.showNotification('Erro ao carregar decks. Tente novamente.');
             return [];
         }
+    }
+
+    clearDeckCache() {
+        this.deckCache = null;
+        this.cacheTimestamp = 0;
     }
 }

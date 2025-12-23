@@ -191,19 +191,27 @@ class PvpManager {
             return;
         }
 
-        // Validar cartas do jogador
-        const invalidPlayerCards = [];
-        playerCards = playerCards.filter(cardId => {
-            const card = window.cardsDB.getCardById(cardId);
+        // Validar cartas do jogador (otimizado com cache)
+        const cardCache = new Map();
+        const validPlayerCards = [];
+        for (const cardId of playerCards) {
+            let card = cardCache.get(cardId);
             if (!card) {
-                invalidPlayerCards.push(cardId);
-                return false;
+                card = window.cardsDB.getCardById(cardId);
+                if (card) {
+                    cardCache.set(cardId, card);
+                    validPlayerCards.push(cardId);
+                }
+            } else {
+                validPlayerCards.push(cardId);
             }
-            return true;
-        });
+        }
+        playerCards = validPlayerCards;
 
-        if (invalidPlayerCards.length > 0) {
-            console.warn('Cartas inválidas no deck do jogador:', invalidPlayerCards);
+        if (playerCards.length === 0) {
+            console.error('Deck do jogador não possui cartas válidas!');
+            this.game.showNotification('Erro: Deck inválido');
+            return;
         }
 
         // Normalizar e validar deck do oponente
@@ -220,19 +228,26 @@ class PvpManager {
             return;
         }
 
-        // Validar cartas do oponente
-        const invalidOpponentCards = [];
-        opponentCards = opponentCards.filter(cardId => {
-            const card = window.cardsDB.getCardById(cardId);
+        // Validar cartas do oponente (otimizado com cache)
+        const validOpponentCards = [];
+        for (const cardId of opponentCards) {
+            let card = cardCache.get(cardId);
             if (!card) {
-                invalidOpponentCards.push(cardId);
-                return false;
+                card = window.cardsDB.getCardById(cardId);
+                if (card) {
+                    cardCache.set(cardId, card);
+                    validOpponentCards.push(cardId);
+                }
+            } else {
+                validOpponentCards.push(cardId);
             }
-            return true;
-        });
+        }
+        opponentCards = validOpponentCards;
 
-        if (invalidOpponentCards.length > 0) {
-            console.warn('Cartas inválidas no deck do oponente:', invalidOpponentCards);
+        if (opponentCards.length === 0) {
+            console.error('Deck do oponente não possui cartas válidas!');
+            this.game.showNotification('Erro: Deck do oponente inválido');
+            return;
         }
 
         // Criar arrays de IDs para passar ao GameState

@@ -26,7 +26,17 @@ class ApiClient {
         };
 
         try {
-            const response = await fetch(url, config);
+            // Timeout de 15 segundos
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+            
+            const response = await fetch(url, {
+                ...config,
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
             const data = await response.json();
 
             if (!response.ok) {
@@ -40,6 +50,10 @@ class ApiClient {
 
             return data;
         } catch (error) {
+            if (error.name === 'AbortError') {
+                console.error('API request timeout:', url);
+                throw new Error('Tempo de espera esgotado. Tente novamente.');
+            }
             console.error('API request error:', error);
             throw error;
         }
