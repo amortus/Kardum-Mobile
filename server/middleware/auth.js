@@ -18,7 +18,7 @@ function authenticateToken(req, res, next) {
         });
     }
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
         if (err) {
             return res.status(403).json({ 
                 success: false, 
@@ -27,7 +27,7 @@ function authenticateToken(req, res, next) {
         }
 
         // Verificar se usuário ainda existe
-        const user = getUserById(decoded.userId);
+        const user = await getUserById(decoded.userId);
         if (!user) {
             return res.status(403).json({ 
                 success: false, 
@@ -54,9 +54,9 @@ function optionalAuth(req, res, next) {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (token) {
-        jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        jwt.verify(token, JWT_SECRET, async (err, decoded) => {
             if (!err) {
-                const user = getUserById(decoded.userId);
+                const user = await getUserById(decoded.userId);
                 if (user) {
                     req.user = {
                         id: user.id,

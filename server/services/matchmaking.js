@@ -39,8 +39,8 @@ class QueueEntry {
 /**
  * Adicionar jogador à fila
  */
-function addToQueue(userId, socketId, matchType, deckId) {
-    const user = getUserById(userId);
+async function addToQueue(userId, socketId, matchType, deckId) {
+    const user = await getUserById(userId);
     if (!user) {
         throw new Error('User not found');
     }

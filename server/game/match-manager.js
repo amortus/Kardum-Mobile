@@ -9,16 +9,16 @@ let nextMatchId = 1;
 /**
  * Criar nova partida
  */
-function createPvpMatch(player1Id, player2Id, player1DeckId, player2DeckId, matchType) {
+async function createPvpMatch(player1Id, player2Id, player1DeckId, player2DeckId, matchType) {
     const matchId = nextMatchId++;
     
     // Criar registro no banco
-    const dbResult = createMatch(player1Id, player2Id, matchType);
-    const dbMatchId = dbResult.lastInsertRowid;
+    const dbResult = await createMatch(player1Id, player2Id, matchType);
+    const dbMatchId = dbResult.lastInsertRowid || dbResult.rows?.[0]?.id;
 
     // Carregar decks
-    const player1Deck = getDeckById(player1DeckId);
-    const player2Deck = getDeckById(player2DeckId);
+    const player1Deck = await getDeckById(player1DeckId);
+    const player2Deck = await getDeckById(player2DeckId);
 
     if (!player1Deck || !player2Deck) {
         throw new Error('Deck not found');
@@ -158,7 +158,7 @@ function processAction(matchId, playerId, action) {
 /**
  * Finalizar partida
  */
-function endPvpMatch(matchId, winnerId) {
+async function endPvpMatch(matchId, winnerId) {
     const match = activeMatches.get(matchId);
     if (!match) {
         throw new Error('Match not found');
@@ -173,7 +173,7 @@ function endPvpMatch(matchId, winnerId) {
     const duration = Math.floor((Date.now() - match.startedAt) / 1000);
 
     // Atualizar ELO
-    const eloUpdate = updateEloAfterMatch(
+    const eloUpdate = await updateEloAfterMatch(
         match.player1Id,
         match.player2Id,
         winnerId,
@@ -181,19 +181,19 @@ function endPvpMatch(matchId, winnerId) {
     );
 
     // Atualizar estatísticas no banco
-    const { db } = require('../database');
-    db.prepare('UPDATE users SET total_matches = total_matches + 1 WHERE id IN (?, ?)').run(match.player1Id, match.player2Id);
+    const { dbHelpers } = require('../database');
+    await dbHelpers.run('UPDATE users SET total_matches = total_matches + 1 WHERE id IN (?, ?)', [match.player1Id, match.player2Id]);
     
     if (winnerId === match.player1Id) {
-        db.prepare('UPDATE users SET wins = wins + 1 WHERE id = ?').run(match.player1Id);
-        db.prepare('UPDATE users SET losses = losses + 1 WHERE id = ?').run(match.player2Id);
+        await dbHelpers.run('UPDATE users SET wins = wins + 1 WHERE id = ?', [match.player1Id]);
+        await dbHelpers.run('UPDATE users SET losses = losses + 1 WHERE id = ?', [match.player2Id]);
     } else if (winnerId === match.player2Id) {
-        db.prepare('UPDATE users SET wins = wins + 1 WHERE id = ?').run(match.player2Id);
-        db.prepare('UPDATE users SET losses = losses + 1 WHERE id = ?').run(match.player1Id);
+        await dbHelpers.run('UPDATE users SET wins = wins + 1 WHERE id = ?', [match.player2Id]);
+        await dbHelpers.run('UPDATE users SET losses = losses + 1 WHERE id = ?', [match.player1Id]);
     }
 
     // Salvar no banco
-    endMatch(matchId, winnerId, duration);
+    await endMatch(matchId, winnerId, duration);
 
     console.log(`[MatchManager] Match ${matchId} ended. Winner: ${winnerId}`);
 

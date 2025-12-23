@@ -32,9 +32,9 @@ function calculateNewElo(playerElo, opponentElo, actualScore, matchType = 'ranke
  * @param {number} winnerId - ID do vencedor (null para empate)
  * @param {string} matchType - 'ranked' ou 'casual'
  */
-function updateEloAfterMatch(player1Id, player2Id, winnerId, matchType) {
-    const player1 = getUserById(player1Id);
-    const player2 = getUserById(player2Id);
+async function updateEloAfterMatch(player1Id, player2Id, winnerId, matchType) {
+    const player1 = await getUserById(player1Id);
+    const player2 = await getUserById(player2Id);
 
     if (!player1 || !player2) {
         console.error('[ELO] User not found');
@@ -63,8 +63,8 @@ function updateEloAfterMatch(player1Id, player2Id, winnerId, matchType) {
     const newPlayer2Elo = calculateNewElo(player2Elo, player1Elo, player2Score, matchType);
 
     // Atualizar no banco
-    updateUserElo(player1Id, matchType, newPlayer1Elo);
-    updateUserElo(player2Id, matchType, newPlayer2Elo);
+    await updateUserElo(player1Id, matchType, newPlayer1Elo);
+    await updateUserElo(player2Id, matchType, newPlayer2Elo);
 
     console.log(`[ELO] Updated ${matchType} ELO: Player1 ${player1Elo} -> ${newPlayer1Elo} (${player1Score === 1 ? 'WIN' : player1Score === 0 ? 'LOSS' : 'DRAW'}), Player2 ${player2Elo} -> ${newPlayer2Elo} (${player2Score === 1 ? 'WIN' : player2Score === 0 ? 'LOSS' : 'DRAW'})`);
 

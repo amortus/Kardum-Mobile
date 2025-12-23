@@ -12,10 +12,10 @@ router.use(authenticateToken);
  * GET /api/decks
  * Listar todos os decks do usuário
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
     try {
         const userId = req.user.id;
-        const decks = getUserDecks(userId);
+        const decks = await getUserDecks(userId);
 
         res.json({
             success: true,
@@ -34,12 +34,12 @@ router.get('/', (req, res) => {
  * GET /api/decks/:id
  * Obter deck específico
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
         const userId = req.user.id;
         const deckId = parseInt(req.params.id);
 
-        const deck = getDeckById(deckId);
+        const deck = await getDeckById(deckId);
 
         if (!deck) {
             return res.status(404).json({
@@ -73,7 +73,7 @@ router.get('/:id', (req, res) => {
  * POST /api/decks
  * Criar novo deck
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     try {
         const userId = req.user.id;
         const { name, generalId, cards } = req.body;
@@ -111,12 +111,12 @@ router.post('/', (req, res) => {
             cards: JSON.stringify(cards)
         };
 
-        const result = createDeck(userId, deckData);
+        const result = await createDeck(userId, deckData);
 
         res.status(201).json({
             success: true,
             data: {
-                id: result.lastInsertRowid,
+                id: result.lastInsertRowid || result.rows?.[0]?.id,
                 name,
                 generalId,
                 cards,
@@ -136,14 +136,14 @@ router.post('/', (req, res) => {
  * PUT /api/decks/:id
  * Atualizar deck existente
  */
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
     try {
         const userId = req.user.id;
         const deckId = parseInt(req.params.id);
         const { name, generalId, cards } = req.body;
 
         // Verificar se deck existe e pertence ao usuário
-        const existingDeck = getDeckById(deckId);
+        const existingDeck = await getDeckById(deckId);
         if (!existingDeck) {
             return res.status(404).json({
                 success: false,
@@ -173,7 +173,7 @@ router.put('/:id', (req, res) => {
             cards: cards ? JSON.stringify(cards) : existingDeck.cards
         };
 
-        updateDeck(deckId, userId, deckData);
+        await updateDeck(deckId, userId, deckData);
 
         res.json({
             success: true,
@@ -196,13 +196,13 @@ router.put('/:id', (req, res) => {
  * DELETE /api/decks/:id
  * Deletar deck
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
     try {
         const userId = req.user.id;
         const deckId = parseInt(req.params.id);
 
         // Verificar se deck existe e pertence ao usuário
-        const deck = getDeckById(deckId);
+        const deck = await getDeckById(deckId);
         if (!deck) {
             return res.status(404).json({
                 success: false,
@@ -217,7 +217,7 @@ router.delete('/:id', (req, res) => {
             });
         }
 
-        deleteDeck(deckId, userId);
+        await deleteDeck(deckId, userId);
 
         res.json({
             success: true,

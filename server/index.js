@@ -65,20 +65,22 @@ io.use((socket, next) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        const user = getUserById(decoded.userId);
-        
-        if (!user) {
-            return next(new Error('User not found'));
-        }
+        getUserById(decoded.userId).then(user => {
+            if (!user) {
+                return next(new Error('User not found'));
+            }
 
-        socket.userId = user.id;
-        socket.user = {
-            id: user.id,
-            username: user.username,
-            email: user.email
-        };
-        
-        next();
+            socket.userId = user.id;
+            socket.user = {
+                id: user.id,
+                username: user.username,
+                email: user.email
+            };
+            
+            next();
+        }).catch(err => {
+            next(new Error('User not found'));
+        });
     } catch (error) {
         next(new Error('Invalid token'));
     }
@@ -120,7 +122,9 @@ io.on('connection', (socket) => {
 
             // Se encontrou match imediatamente
             if (match) {
-                handleMatchFound(match, matchType);
+                handleMatchFound(match, matchType).catch(err => {
+                    console.error('[Matchmaking] Error handling match found:', err);
+                });
             }
         } catch (error) {
             console.error('[Matchmaking] Join error:', error);
@@ -266,7 +270,7 @@ io.on('connection', (socket) => {
     });
 
     // Partida: Finalizar
-    socket.on('pvp:match:end', (data) => {
+    socket.on('pvp:match:end', async (data) => {
         try {
             const { matchId, winnerId } = data;
             const match = matchManager.getMatch(matchId);
@@ -333,11 +337,11 @@ io.on('connection', (socket) => {
 /**
  * Handler quando match é encontrado
  */
-function handleMatchFound(match, matchType) {
+async function handleMatchFound(match, matchType) {
     console.log(`[Matchmaking] Match found: ${match.player1.userId} vs ${match.player2.userId}`);
 
     // Criar partida
-    const matchState = matchManager.createPvpMatch(
+    const matchState = await matchManager.createPvpMatch(
         match.player1.userId,
         match.player2.userId,
         match.player1.deckId,
@@ -349,11 +353,15 @@ function handleMatchFound(match, matchType) {
     const player1Sockets = userSockets.get(match.player1.userId);
     const player2Sockets = userSockets.get(match.player2.userId);
 
+    // Buscar usernames dos jogadores
+    const player1User = await getUserById(match.player1.userId);
+    const player2User = await getUserById(match.player2.userId);
+
     const matchData = {
         matchId: matchState.matchId,
         opponent: {
             userId: match.player2.userId,
-            username: getUserById(match.player2.userId)?.username || 'Unknown'
+            username: player2User?.username || 'Unknown'
         },
         matchType
     };
@@ -368,7 +376,7 @@ function handleMatchFound(match, matchType) {
         matchId: matchState.matchId,
         opponent: {
             userId: match.player1.userId,
-            username: getUserById(match.player1.userId)?.username || 'Unknown'
+            username: player1User?.username || 'Unknown'
         },
         matchType
     };

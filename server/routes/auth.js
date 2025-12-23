@@ -40,7 +40,7 @@ router.post('/register', async (req, res) => {
         }
 
         // Verificar se username já existe
-        const existingUser = getUserByUsername(username);
+        const existingUser = await getUserByUsername(username);
         if (existingUser) {
             return res.status(409).json({
                 success: false,
@@ -63,11 +63,11 @@ router.post('/register', async (req, res) => {
         const passwordHash = await bcrypt.hash(password, 10);
 
         // Criar usuário
-        const result = createUser(username, passwordHash, email || null);
-        const userId = result.lastInsertRowid;
+        const result = await createUser(username, passwordHash, email || null);
+        const userId = result.lastInsertRowid || result.rows?.[0]?.id;
 
         // Buscar usuário criado
-        const user = getUserById(userId);
+        const user = await getUserById(userId);
 
         // Gerar token JWT
         const token = jwt.sign(
@@ -117,7 +117,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Buscar usuário
-        const user = getUserByUsername(username);
+        const user = await getUserByUsername(username);
         if (!user) {
             return res.status(401).json({
                 success: false,
@@ -135,8 +135,8 @@ router.post('/login', async (req, res) => {
         }
 
         // Atualizar último login
-        const { db } = require('../database');
-        db.prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+        const { dbHelpers } = require('../database');
+        await dbHelpers.run('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
 
         // Gerar token JWT
         const token = jwt.sign(
@@ -177,9 +177,9 @@ router.post('/login', async (req, res) => {
  * GET /api/auth/me
  * Obter dados do usuário logado
  */
-router.get('/me', authenticateToken, (req, res) => {
+router.get('/me', authenticateToken, async (req, res) => {
     try {
-        const user = getUserById(req.user.id);
+        const user = await getUserById(req.user.id);
         
         if (!user) {
             return res.status(404).json({
