@@ -144,6 +144,27 @@ class SocketClient {
     }
 
     /**
+     * Solicitar sincronização de estado
+     */
+    sendSyncRequest(matchId) {
+        if (!this.socket || !this.isConnected()) {
+            throw new Error('Not connected to server');
+        }
+
+        this.socket.emit('pvp:match:sync', { matchId });
+    }
+
+    /**
+     * Listener para sincronização de estado
+     */
+    onMatchState(callback) {
+        this.callbacks.matchState.push(callback);
+        if (this.socket) {
+            this.socket.on('pvp:match:state', callback);
+        }
+    }
+
+    /**
      * Event listeners
      */
     onMatchFound(callback) {
@@ -206,6 +227,7 @@ class SocketClient {
         this.socket.removeAllListeners('pvp:match:start');
         this.socket.removeAllListeners('pvp:match:action');
         this.socket.removeAllListeners('pvp:match:end');
+        this.socket.removeAllListeners('pvp:match:state');
         this.socket.removeAllListeners('pvp:matchmaking:joined');
         this.socket.removeAllListeners('pvp:matchmaking:left');
         this.socket.removeAllListeners('pvp:error');
@@ -222,6 +244,9 @@ class SocketClient {
         });
         this.callbacks.matchEnd.forEach(cb => {
             this.socket.on('pvp:match:end', cb);
+        });
+        this.callbacks.matchState.forEach(cb => {
+            this.socket.on('pvp:match:state', cb);
         });
         this.callbacks.matchmakingJoined.forEach(cb => {
             this.socket.on('pvp:matchmaking:joined', cb);

@@ -271,9 +271,23 @@ class KardumGame {
         decks.forEach(deck => {
             const item = document.createElement('div');
             item.className = 'deck-selection-item';
-            const generalId = deck.generalId || (Array.isArray(deck.cards) ? deck.cards[0] : null);
-            const general = generalId ? CardsDB.getCardById(generalId) : null;
-            const cards = Array.isArray(deck.cards) ? deck.cards : JSON.parse(deck.cards || '[]');
+            
+            // Garantir que cards seja sempre um array de IDs válidos
+            let cards = [];
+            if (Array.isArray(deck.cards)) {
+                cards = deck.cards;
+            } else if (typeof deck.cards === 'string') {
+                try {
+                    cards = JSON.parse(deck.cards || '[]');
+                } catch (e) {
+                    console.error('Erro ao parsear cards do deck:', e);
+                    cards = [];
+                }
+            }
+            
+            // Garantir que generalId seja válido
+            const generalId = deck.generalId || deck.general_id || (cards.length > 0 ? cards[0] : null);
+            const general = generalId && window.cardsDB ? window.cardsDB.getCardById(generalId) : null;
             
             item.innerHTML = `
                 <div class="deck-name">${deck.name}</div>
@@ -282,10 +296,16 @@ class KardumGame {
             `;
             item.onclick = () => {
                 modal.classList.add('hidden');
+                // Garantir que o deck tenha a estrutura correta
+                const normalizedDeck = {
+                    ...deck,
+                    generalId: generalId,
+                    cards: cards
+                };
                 if (onSelect) {
-                    onSelect(deck);
+                    onSelect(normalizedDeck);
                 } else {
-                    this.startGameWithDeck(deck);
+                    this.startGameWithDeck(normalizedDeck);
                 }
             };
             list.appendChild(item);
@@ -298,6 +318,13 @@ class KardumGame {
         document.getElementById('deck-selection-modal').classList.add('hidden');
         this.currentMode = 'singleplayer';
 
+        // Garantir que cardsDB está disponível
+        if (!window.cardsDB || !window.cardsDB.getCardById) {
+            console.error('CardsDB não está disponível!');
+            this.showNotification('Erro ao carregar banco de cartas. Recarregue a página.');
+            return;
+        }
+
         this.gameState = new GameState();
         this.combatSystem = new CombatSystem(this.gameState);
         this.gameState.combatSystem = this.combatSystem;
@@ -308,13 +335,38 @@ class KardumGame {
         this.setupGameListeners();
 
         // Extrair general e cartas do deck
-        let generalId = playerDeckData.generalId;
-        let cards = Array.isArray(playerDeckData.cards) ? playerDeckData.cards : JSON.parse(playerDeckData.cards || '[]');
+        let generalId = playerDeckData.generalId || playerDeckData.general_id;
+        let cards = Array.isArray(playerDeckData.cards) 
+            ? playerDeckData.cards 
+            : (typeof playerDeckData.cards === 'string' ? JSON.parse(playerDeckData.cards || '[]') : []);
         
         // Se não tem generalId separado, assumir que o primeiro é o general
         if (!generalId && cards.length > 0) {
             generalId = cards[0];
             cards = cards.slice(1);
+        }
+
+        // Validar que o general existe
+        const generalCard = window.cardsDB.getCardById(generalId);
+        if (!generalCard) {
+            console.error(`General não encontrado: ${generalId}`);
+            this.showNotification(`Erro: General não encontrado (${generalId})`);
+            return;
+        }
+
+        // Validar que todas as cartas existem no database
+        const invalidCards = [];
+        cards.forEach(cardId => {
+            const card = window.cardsDB.getCardById(cardId);
+            if (!card) {
+                invalidCards.push(cardId);
+            }
+        });
+
+        if (invalidCards.length > 0) {
+            console.warn('Cartas inválidas encontradas:', invalidCards);
+            // Filtrar cartas inválidas
+            cards = cards.filter(cardId => window.cardsDB.getCardById(cardId) !== undefined);
         }
 
         const fullPlayerDeck = [generalId, ...cards];
@@ -337,11 +389,13 @@ class KardumGame {
                 case 'turnStarted':
                     console.log('Turn started:', data);
                     this.renderBattlefield();
-                    if (data.playerId === 'player2') {
+                    // Em singleplayer, AI joga no turno do player2
+                    if (this.currentMode === 'singleplayer' && data.playerId === 'player2') {
                         setTimeout(() => {
                             this.aiOpponent.takeTurn();
                         }, 1000);
                     }
+                    // Em PvP, o turno é sincronizado via endTurn do oponente
                     break;
 
                 case 'cardsDrawn':
@@ -352,11 +406,13 @@ class KardumGame {
                 case 'cardPlayed':
                     this.renderBattlefield();
                     this.showNotification(`${data.card.name} jogado!`);
+                    // Em PvP, a sincronização já foi feita via sendPlayerAction
                     break;
 
                 case 'attackDeclared':
                     this.renderBattlefield();
                     this.showNotification(`${data.attacker} atacou ${data.target}!`);
+                    // Em PvP, a sincronização já foi feita via sendPlayerAction
                     break;
 
                 case 'creatureDestroyed':
@@ -375,6 +431,10 @@ class KardumGame {
                 case 'phaseChanged':
                     this.renderBattlefield();
                     this.updatePhaseIndicator(data.phase);
+                    // Em PvP, sincronizar mudança de fase (se necessário)
+                    if (this.currentMode === 'pvp' && this.pvpManager && this.pvpManager.currentMatch) {
+                        // Fase é sincronizada automaticamente via endTurn
+                    }
                     break;
 
                 case 'combatPhaseComplete':
@@ -649,10 +709,30 @@ class KardumGame {
             return;
         }
 
-        const result = this.gameState.playCard(playerId, card.instanceId, {});
-
-        if (!result.success) {
-            this.showNotification(result.error);
+        // Se for PvP, enviar ação para o servidor
+        if (this.currentMode === 'pvp' && this.pvpManager && this.pvpManager.currentMatch) {
+            const action = {
+                type: 'playCard',
+                instanceId: card.instanceId,
+                cardId: card.cardId || card.id
+            };
+            
+            // Aplicar ação localmente primeiro (otimistic update)
+            const result = this.gameState.playCard(playerId, card.instanceId, {});
+            
+            if (result.success) {
+                // Enviar para o servidor
+                this.pvpManager.sendPlayerAction(action);
+            } else {
+                this.showNotification(result.error);
+                return;
+            }
+        } else {
+            // Singleplayer - aplicar diretamente
+            const result = this.gameState.playCard(playerId, card.instanceId, {});
+            if (!result.success) {
+                this.showNotification(result.error);
+            }
         }
 
         this.selectedCard = null;
@@ -660,9 +740,26 @@ class KardumGame {
     }
 
     playCardAsDefender(cardData) {
-        const result = this.gameState.playCard('player1', cardData.instanceId, { asDefender: true });
-        if (!result.success) {
-            this.showNotification(result.error);
+        const playerId = 'player1';
+        
+        // Se for PvP, enviar ação para o servidor
+        if (this.currentMode === 'pvp' && this.pvpManager && this.pvpManager.currentMatch) {
+            const result = this.gameState.playCard(playerId, cardData.instanceId, { asDefender: true });
+            if (result.success) {
+                this.pvpManager.sendPlayerAction({
+                    type: 'playCard',
+                    instanceId: cardData.instanceId,
+                    cardId: cardData.cardId || cardData.id,
+                    asDefender: true
+                });
+            } else {
+                this.showNotification(result.error);
+            }
+        } else {
+            const result = this.gameState.playCard(playerId, cardData.instanceId, { asDefender: true });
+            if (!result.success) {
+                this.showNotification(result.error);
+            }
         }
     }
 
@@ -678,10 +775,25 @@ class KardumGame {
 
         if (this.targetMode === 'equip' && this.selectedCard) {
             const targetId = card.instanceId === player.general.instanceId ? 'general' : card.instanceId;
-            const result = this.gameState.playCard(playerId, this.selectedCard.instanceId, { targetId });
-
-            if (!result.success) {
-                this.showNotification(result.error);
+            
+            // Se for PvP, enviar ação para o servidor
+            if (this.currentMode === 'pvp' && this.pvpManager && this.pvpManager.currentMatch) {
+                const result = this.gameState.playCard(playerId, this.selectedCard.instanceId, { targetId });
+                if (result.success) {
+                    this.pvpManager.sendPlayerAction({
+                        type: 'playCard',
+                        instanceId: this.selectedCard.instanceId,
+                        cardId: this.selectedCard.cardId || this.selectedCard.id,
+                        targetId: targetId
+                    });
+                } else {
+                    this.showNotification(result.error);
+                }
+            } else {
+                const result = this.gameState.playCard(playerId, this.selectedCard.instanceId, { targetId });
+                if (!result.success) {
+                    this.showNotification(result.error);
+                }
             }
 
             this.targetMode = null;
@@ -711,22 +823,42 @@ class KardumGame {
 
     executeAttack(attacker, target) {
         const targetId = target.instanceId;
-        const result = this.combatSystem.declareAttack(attacker.instanceId, targetId);
-
-        if (result.success) {
-            // Se for PvP, enviar ação para o servidor
-            if (this.currentMode === 'pvp' && this.pvpManager && this.pvpManager.currentMatch) {
+        
+        // Se for PvP, validar antes de aplicar
+        if (this.currentMode === 'pvp' && this.pvpManager && this.pvpManager.currentMatch) {
+            // Validar ataque localmente
+            if (!this.combatSystem.canAttack(attacker.instanceId)) {
+                this.showNotification('Esta criatura não pode atacar!');
+                this.attackingCard = null;
+                return;
+            }
+            
+            // Aplicar ataque localmente (otimistic update)
+            const result = this.combatSystem.declareAttack(attacker.instanceId, targetId);
+            
+            if (result.success) {
+                // Enviar para o servidor
                 this.pvpManager.sendPlayerAction({
                     type: 'attack',
                     attackerId: attacker.instanceId,
                     targetId: targetId
                 });
+                this.attackingCard = null;
+                this.renderBattlefield();
+            } else {
+                this.showNotification(result.error);
+                this.attackingCard = null;
             }
-
-            this.attackingCard = null;
-            this.renderBattlefield();
         } else {
-            this.showNotification(result.error);
+            // Singleplayer - aplicar diretamente
+            const result = this.combatSystem.declareAttack(attacker.instanceId, targetId);
+            if (result.success) {
+                this.attackingCard = null;
+                this.renderBattlefield();
+            } else {
+                this.showNotification(result.error);
+                this.attackingCard = null;
+            }
         }
     }
 

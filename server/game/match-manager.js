@@ -48,7 +48,8 @@ function createPvpMatch(player1Id, player2Id, player1DeckId, player2DeckId, matc
         player1Ready: false,
         player2Ready: false,
         winner: null,
-        ended: false
+        ended: false,
+        actionHistory: [] // Histórico de ações
     };
 
     activeMatches.set(dbMatchId, matchState);
@@ -109,20 +110,49 @@ function processAction(matchId, playerId, action) {
         throw new Error('Match already ended');
     }
 
+    // Validar estrutura da ação
+    if (!action || !action.type) {
+        throw new Error('Invalid action structure');
+    }
+
     // Validar que é o turno do jogador
     const expectedPlayer = match.currentPlayer === 'player1' ? match.player1Id : match.player2Id;
     if (playerId !== expectedPlayer) {
         throw new Error('Not your turn');
     }
 
+    // Validar tipo de ação
+    const validActionTypes = ['playCard', 'attack', 'endTurn', 'useAbility'];
+    if (!validActionTypes.includes(action.type)) {
+        throw new Error(`Invalid action type: ${action.type}`);
+    }
+
     // Atualizar último tempo de ação
     match.lastActionAt = Date.now();
 
-    // A ação será validada e processada pelo cliente
-    // O servidor apenas registra e sincroniza
+    // Registrar ação no histórico (se não existir, criar)
+    if (!match.actionHistory) {
+        match.actionHistory = [];
+    }
+    match.actionHistory.push({
+        playerId,
+        action,
+        timestamp: Date.now()
+    });
+
+    // Atualizar turno/fase se necessário
+    if (action.type === 'endTurn') {
+        // Alternar turno
+        match.currentPlayer = match.currentPlayer === 'player1' ? 'player2' : 'player1';
+        match.turnNumber = match.currentPlayer === 'player1' ? match.turnNumber + 1 : match.turnNumber;
+    }
+
     console.log(`[MatchManager] Action from player ${playerId} in match ${matchId}:`, action.type);
 
-    return match;
+    return {
+        success: true,
+        match
+    };
 }
 
 /**
@@ -180,6 +210,31 @@ function endPvpMatch(matchId, winnerId) {
 }
 
 /**
+ * Obter estado completo da partida para sincronização
+ */
+function getMatchState(matchId) {
+    const match = activeMatches.get(matchId);
+    if (!match) {
+        throw new Error('Match not found');
+    }
+
+    return {
+        matchId: match.matchId,
+        player1Id: match.player1Id,
+        player2Id: match.player2Id,
+        currentPlayer: match.currentPlayer,
+        turnNumber: match.turnNumber,
+        startedAt: match.startedAt,
+        lastActionAt: match.lastActionAt,
+        player1Ready: match.player1Ready,
+        player2Ready: match.player2Ready,
+        ended: match.ended,
+        winner: match.winner,
+        actionHistory: match.actionHistory || []
+    };
+}
+
+/**
  * Limpar partidas antigas
  */
 function cleanupOldMatches() {
@@ -202,6 +257,7 @@ module.exports = {
     setPlayerReady,
     areBothPlayersReady,
     processAction,
-    endPvpMatch
+    endPvpMatch,
+    getMatchState
 };
 

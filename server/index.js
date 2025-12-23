@@ -203,8 +203,13 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            // Processar ação
-            matchManager.processAction(matchId, userId, action);
+            // Validar e processar ação no servidor
+            const result = matchManager.processAction(matchId, userId, action);
+            
+            if (!result.success) {
+                socket.emit('pvp:error', { message: result.error || 'Ação inválida' });
+                return;
+            }
 
             // Enviar ação para o oponente
             const opponentId = match.player1Id === userId ? match.player2Id : match.player1Id;
@@ -218,9 +223,45 @@ io.on('connection', (socket) => {
                     });
                 });
             }
+
+            // Confirmar ação para o remetente
+            socket.emit('pvp:match:action:confirmed', {
+                matchId,
+                action,
+                success: true
+            });
         } catch (error) {
             console.error('[Match] Action error:', error);
             socket.emit('pvp:error', { message: error.message || 'Erro ao processar ação' });
+        }
+    });
+
+    // Partida: Sincronizar estado
+    socket.on('pvp:match:sync', (data) => {
+        try {
+            const { matchId } = data;
+            const match = matchManager.getMatch(matchId);
+
+            if (!match) {
+                socket.emit('pvp:error', { message: 'Partida não encontrada' });
+                return;
+            }
+
+            if (match.player1Id !== userId && match.player2Id !== userId) {
+                socket.emit('pvp:error', { message: 'Você não está nesta partida' });
+                return;
+            }
+
+            // Obter estado completo da partida
+            const matchState = matchManager.getMatchState(matchId);
+            
+            socket.emit('pvp:match:state', {
+                matchId,
+                state: matchState
+            });
+        } catch (error) {
+            console.error('[Match] Sync error:', error);
+            socket.emit('pvp:error', { message: error.message || 'Erro ao sincronizar estado' });
         }
     });
 
