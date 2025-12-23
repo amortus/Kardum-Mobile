@@ -1,6 +1,5 @@
 // client/js/network/socket-client.js - Cliente Socket.IO para PvP
 // Socket.IO será carregado via CDN no HTML
-const io = window.io;
 import authManager from '../auth/auth-manager.js';
 
 const SOCKET_URL = window.location.origin;
@@ -22,11 +21,24 @@ class SocketClient {
     }
 
     /**
+     * Verificar se Socket.IO está disponível
+     */
+    isSocketIOAvailable() {
+        return typeof window !== 'undefined' && typeof window.io !== 'undefined';
+    }
+
+    /**
      * Conectar ao servidor
      */
     connect() {
         if (this.socket?.connected) {
             console.warn('[Socket] Already connected');
+            return;
+        }
+
+        // Verificar se Socket.IO está disponível
+        if (!this.isSocketIOAvailable()) {
+            console.error('[Socket] Socket.IO não está disponível. Certifique-se de que o script foi carregado.');
             return;
         }
 
@@ -36,6 +48,7 @@ class SocketClient {
             return;
         }
 
+        const io = window.io;
         this.socket = io(SOCKET_URL, {
             auth: {
                 token

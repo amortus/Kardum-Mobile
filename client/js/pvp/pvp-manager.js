@@ -69,6 +69,12 @@ class PvpManager {
         }
 
         if (!socketClient.isConnected()) {
+            // Verificar se Socket.IO está disponível antes de conectar
+            if (!socketClient.isSocketIOAvailable()) {
+                this.game.showNotification('Multiplayer não disponível. Socket.IO não carregado.');
+                return;
+            }
+            
             socketClient.connect();
             // Aguardar conexão
             await new Promise((resolve) => {

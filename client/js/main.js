@@ -62,8 +62,8 @@ class KardumGame {
         this.pvpManager = new PvpManager(this);
         this.setupAuthUI();
         
-        // Conectar socket após autenticação
-        if (authManager.isAuthenticated()) {
+        // Conectar socket após autenticação (apenas se Socket.IO estiver disponível)
+        if (authManager.isAuthenticated() && socketClient.isSocketIOAvailable()) {
             socketClient.connect();
         }
 
@@ -76,11 +76,19 @@ class KardumGame {
         });
 
         document.getElementById('btn-multiplayer-casual')?.addEventListener('click', () => {
-            this.startPvpMatchmaking('casual');
+            if (socketClient.isSocketIOAvailable()) {
+                this.startPvpMatchmaking('casual');
+            } else {
+                this.showNotification('Multiplayer não disponível. Socket.IO não carregado.');
+            }
         });
 
         document.getElementById('btn-multiplayer-ranked')?.addEventListener('click', () => {
-            this.startPvpMatchmaking('ranked');
+            if (socketClient.isSocketIOAvailable()) {
+                this.startPvpMatchmaking('ranked');
+            } else {
+                this.showNotification('Multiplayer não disponível. Socket.IO não carregado.');
+            }
         });
 
         document.querySelectorAll('[data-difficulty]').forEach(btn => {
@@ -159,8 +167,10 @@ class KardumGame {
 
             if (result.success) {
                 this.showScreen('main-menu');
-                // Conectar socket após login
-                socketClient.connect();
+                // Conectar socket após login (apenas se Socket.IO estiver disponível)
+                if (socketClient.isSocketIOAvailable()) {
+                    socketClient.connect();
+                }
             } else {
                 this.showAuthError('login-error', result.error);
             }
@@ -186,8 +196,10 @@ class KardumGame {
 
             if (result.success) {
                 this.showScreen('main-menu');
-                // Conectar socket após registro
-                socketClient.connect();
+                // Conectar socket após registro (apenas se Socket.IO estiver disponível)
+                if (socketClient.isSocketIOAvailable()) {
+                    socketClient.connect();
+                }
             } else {
                 this.showAuthError('register-error', result.error);
             }
