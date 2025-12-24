@@ -308,6 +308,10 @@ async function initDatabase() {
     }
 
     console.log('✅ Database initialized');
+    } catch (error) {
+        console.error('❌ Error initializing database:', error);
+        throw error; // Re-throw para que o chamador possa tratar
+    }
 }
 
 // Seed initial data
